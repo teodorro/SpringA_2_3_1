@@ -59,7 +59,7 @@ public class PostRepository {
             try {
                 var postId = post.getId();
                 var item = repository.stream().filter(x -> x.getId() == postId).findAny();
-                if (!item.isEmpty()){
+                if (item.isEmpty()){
                     throw new NotFoundException(postId);
                 } else{
                     item.get().setMessage(post.getMessage());
