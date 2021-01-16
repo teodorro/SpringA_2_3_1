@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 @Repository
 public class PostRepository {
@@ -23,7 +24,7 @@ public class PostRepository {
 
         lock.lock();
         try {
-            posts = List.copyOf(repository);
+            posts = repository.stream().filter(x -> !x.getRemoved()).collect(Collectors.toList());
         } finally {
             lock.unlock();
         }
@@ -36,7 +37,7 @@ public class PostRepository {
 
         lock.lock();
         try {
-            post = repository.stream().filter(x -> x.getId() == id).findAny();
+            post = repository.stream().filter(x -> x.getId() == id && !x.getRemoved()).findAny();
         } finally {
             lock.unlock();
         }
@@ -58,8 +59,8 @@ public class PostRepository {
             lock.lock();
             try {
                 var postId = post.getId();
-                var item = repository.stream().filter(x -> x.getId() == postId).findAny();
-                if (!item.isEmpty()){
+                var item = repository.stream().filter(x -> x.getId() == postId && !x.getRemoved()).findAny();
+                if (item.isEmpty()){
                     throw new NotFoundException(postId);
                 } else{
                     item.get().setMessage(post.getMessage());
@@ -73,10 +74,16 @@ public class PostRepository {
         return post;
     }
 
-    public void removeById(long id){
+    public void removeById(long id) throws NotFoundException {
         lock.lock();
         try {
-            repository.removeIf(x -> x.getId() == id);
+            var post = repository.stream().filter(x -> x.getId() == id && !x.getRemoved()).findAny();
+            if (post.isPresent()){
+                post.get().setRemoved(true);
+            }
+            else{
+                throw new NotFoundException(id);
+            }
         } finally {
             lock.unlock();
         }
